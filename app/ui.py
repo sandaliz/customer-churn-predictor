@@ -8,15 +8,23 @@ import joblib
 import os
 import shap
 
-# Load API key from .env
-ENV_PATH = os.path.join(os.path.dirname(__file__), "../.env")
+# Load API key from .env or Streamlit Cloud secrets
 OPENROUTER_API_KEY = None
-if os.path.exists(ENV_PATH):
-    with open(ENV_PATH) as f:
-        for line in f:
-            if line.startswith("API="):
-                OPENROUTER_API_KEY = line.strip().split("=")[1]
-                break
+try:
+    # Try Streamlit Cloud secrets first
+    OPENROUTER_API_KEY = st.secrets.get("API", None)
+except:
+    pass
+
+# Fallback to .env file
+if not OPENROUTER_API_KEY:
+    ENV_PATH = os.path.join(os.path.dirname(__file__), "../.env")
+    if os.path.exists(ENV_PATH):
+        with open(ENV_PATH) as f:
+            for line in f:
+                if line.startswith("API="):
+                    OPENROUTER_API_KEY = line.strip().split("=")[1]
+                    break
 
 # Load model for Streamlit Cloud deployment
 MODEL_PATH = os.path.join(os.path.dirname(__file__), "../models/churn_model.pkl")
