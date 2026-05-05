@@ -6,6 +6,17 @@ import plotly.express as px
 import plotly.graph_objects as go
 import joblib
 import os
+import shap
+
+# Load API key from .env
+ENV_PATH = os.path.join(os.path.dirname(__file__), "../.env")
+OPENROUTER_API_KEY = None
+if os.path.exists(ENV_PATH):
+    with open(ENV_PATH) as f:
+        for line in f:
+            if line.startswith("API="):
+                OPENROUTER_API_KEY = line.strip().split("=")[1]
+                break
 
 # Load model for Streamlit Cloud deployment
 MODEL_PATH = os.path.join(os.path.dirname(__file__), "../models/churn_model.pkl")
@@ -106,6 +117,90 @@ def explain_churn(data, prob):
     else:
         # Low risk - show protective factors
         return protective[:3] if protective else ["No significant risk factors"]
+
+def get_shap_explanation(data):
+    """Get feature contributions using model importances"""
+    try:
+        df = pd.DataFrame([data])
+        df_encoded = preprocess_input(df)
+
+        # Get feature importances from model
+        importances = model.feature_importances_
+        customer_values = df_encoded.iloc[0].values
+
+        # Build list of features with importance and value
+        features = []
+        for i, feat in enumerate(feature_names):
+            if i < len(customer_values) and i < len(importances):
+                val = customer_values[i]
+                imp = importances[i]
+                # Only include features that are active (value > 0)
+                if val > 0:
+                    features.append((feat, imp * 100, val))
+
+        # Sort by importance
+        features.sort(key=lambda x: x[1], reverse=True)
+
+        # Get top 3 risk factors (highest importance features that are present)
+        top_risk = [(f, imp) for f, imp, v in features[:3]]
+
+        # Get protective factors based on business logic from data
+        protective = []
+        if data.get('Contract') in ['One year', 'Two year']:
+            protective.append(('Long-term contract', 5.0))
+        if data.get('tenure', 0) >= 24:
+            protective.append(('Loyal customer', 4.0))
+        if data.get('PaymentMethod', '').startswith('Bank') or data.get('PaymentMethod', '').startswith('Credit'):
+            protective.append(('Auto-pay', 3.0))
+        if data.get('TechSupport') == 'Yes':
+            protective.append(('Has tech support', 2.0))
+
+        return top_risk, protective[:3]
+    except Exception as e:
+        return [], []
+
+def get_ai_insight(data, prob, top_reasons):
+    """Get AI-generated insight from OpenRouter"""
+    if not OPENROUTER_API_KEY:
+        return "AI insights unavailable (no API key)"
+
+    try:
+        from openai import OpenAI
+        client = OpenAI(
+            api_key=OPENROUTER_API_KEY,
+            base_url="https://openrouter.ai/api/v1"
+        )
+
+        prompt = f"""You are a business analyst for a telecom company.
+
+Given this customer data:
+- Contract: {data['Contract']}
+- Tenure: {data['tenure']} months
+- Monthly Charges: ${data['MonthlyCharges']:.0f}
+- Payment Method: {data['PaymentMethod']}
+- Internet Service: {data['InternetService']}
+- Has Tech Support: {data['TechSupport']}
+- Has Online Security: {data['OnlineSecurity']}
+
+Churn Probability: {prob*100:.0f}%
+
+Top contributing factors: {', '.join(top_reasons)}
+
+Generate:
+1. Simple reason for churn risk (1 sentence)
+2. 1-2 actionable recommendations
+3. Keep it under 3 sentences total"""
+
+        response = client.chat.completions.create(
+            model="openai/gpt-3.5-turbo",
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=150
+        )
+
+        return response.choices[0].message.content
+
+    except Exception as e:
+        return f"AI insights unavailable: {str(e)[:50]}"
 
 # Page config
 st.set_page_config(
@@ -431,7 +526,7 @@ with tab1:
             tech = st.selectbox("Tech Support", ["No", "Yes", "No internet service"])
     
     predict = st.button("Predict Churn Risk", type="primary", use_container_width=True)
-    
+
     # Result section below form
     if predict:
         data = {
@@ -455,8 +550,8 @@ with tab1:
             "MonthlyCharges": monthly,
             "TotalCharges": monthly * tenure
         }
-        
-        with st.spinner("Analyzing..."):
+
+        with st.spinner("Analyzing customer data..."):
             # Initialize variables
             prob_pct = 0
             risk = "LOW"
@@ -518,20 +613,11 @@ with tab1:
 
             st.progress(prob / 100 if LOCAL_MODE else res['churn_probability'])
 
-            st.markdown("**Risk Factors**")
-            if contract == "Month-to-month":
-                st.markdown("- Month-to-month contract")
-            if payment == "Electronic check":
-                st.markdown("- Electronic check payment")
-            if tenure < 6:
-                st.markdown("- New customer (<6 months)")
-            if monthly > 70:
-                st.markdown("- High monthly charges")
-
             # Get model-based explanations
             if LOCAL_MODE:
                 reasons = explain_churn(data, prob)
-                st.markdown("**Top Reasons for This Prediction**")
+                st.markdown("---")
+                st.markdown("### Top Reasons for This Prediction")
                 for reason in reasons:
                     st.markdown(f"- {reason}")
             else:
@@ -539,13 +625,61 @@ with tab1:
                     explain_resp = requests.post("http://localhost:8000/explain", json=data, timeout=5)
                     if explain_resp.status_code == 200:
                         explanation = explain_resp.json()
-                        st.markdown("**Top Reasons for This Prediction**")
+                        st.markdown("---")
+                        st.markdown("### Top Reasons for This Prediction")
                         for reason in explanation.get('top_reasons', []):
                             st.markdown(f"- {reason}")
                     else:
                         st.warning(f"Explain endpoint error: {explain_resp.status_code}")
                 except Exception as e:
                     st.warning(f"Explain unavailable: {e}")
+
+            # SHAP Explanation
+            if LOCAL_MODE:
+                try:
+                    top_risk, top_protective = get_shap_explanation(data)
+
+                    st.markdown("---")
+                    st.markdown("### Key Drivers (SHAP)")
+
+                    col_risk, col_prot = st.columns(2)
+
+                    with col_risk:
+                        st.markdown("**Features pushing churn**")
+                        if top_risk:
+                            for feat, val in top_risk:
+                                feat_name = feat.replace('_', ' ')
+                                st.markdown(f"""
+                                <div style="background-color: #fef2f2; padding: 8px 12px; border-radius: 8px; margin: 4px 0; border-left: 3px solid #dc2626;">
+                                    <b>+</b> {val:.1f}% {feat_name}
+                                </div>
+                                """, unsafe_allow_html=True)
+                        else:
+                            st.caption("No significant risk factors")
+
+                    with col_prot:
+                        st.markdown("**Features reducing churn**")
+                        if top_protective:
+                            for feat, val in top_protective:
+                                st.markdown(f"""
+                                <div style="background-color: #ecfdf5; padding: 8px 12px; border-radius: 8px; margin: 4px 0; border-left: 3px solid #10b981;">
+                                    {val:.1f}% {feat}
+                                </div>
+                                """, unsafe_allow_html=True)
+                        else:
+                            st.caption("No protective factors")
+                except Exception as e:
+                    pass  # Silently skip if SHAP fails
+
+            # AI Insight
+            st.markdown("---")
+            st.markdown("### AI Recommendation")
+            ai_insight = get_ai_insight(data, prob, reasons)
+            st.markdown(f"""
+            <div style="background-color: #eff6ff; padding: 16px; border-radius: 12px; border: 1px solid #bfdbfe;">
+                {ai_insight}
+            </div>
+            """, unsafe_allow_html=True)
 
 # ============================================
 # TAB 2: MODEL INFO

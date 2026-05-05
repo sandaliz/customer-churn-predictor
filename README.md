@@ -32,7 +32,8 @@ An end-to-end machine learning system that predicts which customers will leave a
 |---------|-------------|
 | Predict | Churn probability with 80% accuracy |
 | Classify | Risk as HIGH / MEDIUM / LOW |
-| Recommend | Specific retention actions for each risk level |
+| Explain | SHAP-based feature importance for each prediction |
+| Recommend | AI-generated retention recommendations via LLM |
 | Visualize | Interactive dashboard with key metrics |
 
 ---
@@ -50,19 +51,26 @@ cd risk-prediction-churn
 pip install -r requirements.txt
 ```
 
-### 3. Start the API
+### 3. Configure API Key (for AI insights)
+Create a `.env` file in the project root with your OpenRouter API key:
+```bash
+echo "API=your-openrouter-api-key" > .env
+```
+Get a free key at https://openrouter.ai/
+
+### 4. Start the API
 ```bash
 cd app
 uvicorn api:app --reload --port 8000
 ```
 
-### 4. Run the Dashboard (new terminal)
+### 5. Run the Dashboard (new terminal)
 ```bash
 cd app
 streamlit run ui.py --server.port 8502
 ```
 
-### 5. Open in Browser
+### 6. Open in Browser
 - Dashboard: http://localhost:8502
 - API Docs: http://localhost:8000/docs
 
@@ -150,7 +158,9 @@ Projected churn: approximately 75% (compared to 26.6% average)
 |-------|------------|
 | Data Processing | Python, Pandas, NumPy |
 | Visualization | Matplotlib, Seaborn, Plotly |
-| Machine Learning | Scikit-learn |
+| Machine Learning | Scikit-learn (Pipeline), SHAP |
+| Explainability | SHAP for feature importance |
+| AI Integration | OpenAI (OpenRouter) for LLM insights |
 | Backend API | FastAPI |
 | Frontend UI | Streamlit |
 | Deployment | Uvicorn |
@@ -182,6 +192,31 @@ risk-prediction-churn/
 
 ---
 
+## AI-Powered Insights
+
+The system includes an AI layer that provides human-readable explanations and recommendations:
+
+### Top Reasons for Prediction
+- Shows key factors driving the churn prediction based on customer data
+
+### Key Drivers (SHAP)
+- Displays feature importance using SHAP values
+- Shows which features push churn risk up (red) vs down (green)
+- Customer-specific explanations, not just global importance
+
+### AI Recommendation
+- Uses LLM (via OpenRouter) to generate:
+  - Simple reason for churn risk
+  - 1-2 actionable recommendations
+  - Business-friendly advice in under 3 sentences
+
+**Setup:** Add your OpenRouter API key to `.env` file:
+```
+API=your-api-key-here
+```
+
+---
+
 ## Skills Demonstrated
 
 | Skill | Implementation |
@@ -190,6 +225,9 @@ risk-prediction-churn/
 | EDA | 6 actionable insights from visualizations |
 | Feature Engineering | One-hot encoding (15 to 30 features), scaling, stratification |
 | Model Selection | Compared 3 algorithms, business-driven selection |
+| ML Pipelines | Scikit-learn Pipeline for preprocessing + model |
+| Explainability | SHAP for model-agnostic feature importance |
+| AI Integration | OpenAI API for LLM-powered insights |
 | Evaluation | Precision, Recall, F1, Confusion Matrix |
 | Deployment | REST API and Interactive dashboard |
 | Business Translation | Risk scores to Retention actions |

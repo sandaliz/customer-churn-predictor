@@ -76,9 +76,17 @@ Nothing else comes close.
 
 ## Saved
 models/
-├── churn_model.pkl <- Random Forest (deployed)
+├── churn_model.pkl <- Random Forest (standalone)
+├── churn_pipeline.pkl <- Full pipeline (preprocessing + model)
 ├── scaler.pkl <- For scaling new data
 └── feature_names.pkl <- Column order for API
+
+### Pipeline Approach
+The `churn_pipeline.pkl` includes:
+- **Preprocessor**: One-hot encoding for categorical features
+- **Classifier**: Logistic Regression
+
+This allows the API to accept raw customer data and handle preprocessing internally.
 
 
 ---
@@ -106,5 +114,7 @@ Given a new customer's data:
 | File | What It Contains |
 |------|------------------|
 | `03_modeling.ipynb` | Training code |
-| `models/churn_model.pkl` | Saved Logistic Regression model |
-| `docs/MODELING_NOTES.md` | This documentation |
+| `models/churn_model.pkl` | Saved Random Forest model |
+| `models/churn_pipeline.pkl` | Full sklearn pipeline |
+| `models/scaler.pkl` | Feature scaler |
+| `models/feature_names.pkl` | Feature names list |
