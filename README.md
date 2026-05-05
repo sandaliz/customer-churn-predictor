@@ -6,8 +6,7 @@ An end-to-end machine learning system that predicts which customers will leave a
 
 ---
 
-## Dataset
-
+### Dataset Used
 **Source:** [IBM Telco Customer Churn Dataset on Kaggle](https://www.kaggle.com/datasets/blastchar/telco-customer-churn/)
 
 **Overview:**
@@ -166,29 +165,19 @@ risk-prediction-churn/
 ├── app/                      # API and UI
 │   ├── api.py               # FastAPI backend
 │   ├── ui.py                # Streamlit dashboard
-│   └── requirements.txt     # App dependencies
 │
 ├── data/
 │   └── churn.csv            # IBM Telco dataset
 │
 ├── models/                   # Saved model artifacts
-│   ├── churn_model.pkl      # Random Forest model
-│   ├── scaler.pkl           # StandardScaler
-│   └── feature_names.pkl    # Feature list
-│
 ├── notebooks/                # Analysis and training
 │   ├── 01_eda.ipynb         # Exploratory analysis
 │   ├── 02_preprocessing.ipynb # Data cleaning
 │   └── 03_modeling.ipynb    # Model training
 │
 ├── documents/                # Documentation
-│   ├── INSIGHTS.md
-│   ├── BUSINESS_RECOMMENDATIONS.md
-│   ├── PREPROCESSING_NOTES.md
-│   └── MODELING_NOTES.md
 │
 ├── requirements.txt          # Main dependencies
-└── README.md                # This file
 ```
 
 ---
