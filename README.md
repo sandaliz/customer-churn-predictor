@@ -6,8 +6,7 @@ An end-to-end machine learning system that predicts which customers will leave a
 
 ---
 
-## Dataset
-
+### Dataset Used
 **Source:** [IBM Telco Customer Churn Dataset on Kaggle](https://www.kaggle.com/datasets/blastchar/telco-customer-churn/)
 
 **Overview:**
