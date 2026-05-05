@@ -96,8 +96,8 @@ Actual  No   1034     113
 
 **Business Impact:**
 - Catches 176 of 260 actual churners
-- Missed churners cost: ~$74,000 annually
-- Net savings with this model: ~$85,000
+- At-risk revenue: $1.66M annually
+- Expected savings with this model: $1.3M+
 
 ---
 
@@ -167,6 +167,14 @@ Projected churn: approximately 75% (compared to 26.6% average)
 
 ---
 
+## System Architecture
+
+![System Architecture](./documents/system_architecture.png)
+
+**Data Flow:** User Input → Preprocess → Predict → SHAP Explainability → LLM Insights → Response
+
+---
+
 ## Project Structure
 
 ```
@@ -219,18 +227,15 @@ API=your-api-key-here
 
 ## Skills Demonstrated
 
-| Skill | Implementation |
-|-------|----------------|
-| Data Cleaning | Fixed data types, handled missing values (11 rows removed) |
-| EDA | 6 actionable insights from visualizations |
-| Feature Engineering | One-hot encoding (15 to 30 features), scaling, stratification |
-| Model Selection | Compared 3 algorithms, business-driven selection |
-| ML Pipelines | Scikit-learn Pipeline for preprocessing + model |
-| Explainability | SHAP for model-agnostic feature importance |
-| AI Integration | OpenAI API for LLM-powered insights |
-| Evaluation | Precision, Recall, F1, Confusion Matrix |
-| Deployment | REST API and Interactive dashboard |
-| Business Translation | Risk scores to Retention actions |
+| Achievement | Implementation |
+|-------------|----------------|
+| **Production ML Pipeline** | Built end-to-end sklearn pipeline with preprocessing + model |
+| **Explainable AI** | Implemented SHAP-based feature importance for each prediction |
+| **LLM Integration** | Connected OpenAI API for real-time business recommendations |
+| **Full-Stack Deployment** | Deployed FastAPI backend + Streamlit frontend |
+| **Data Engineering** | Cleaned 7K records, handled missing values, one-hot encoding |
+| **Model Selection** | Compared 3 algorithms, selected based on business metrics (recall) |
+| **Business Impact** | Identified $1.3M+ at-risk revenue, built actionable retention system |
 
 ---
 
