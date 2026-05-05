@@ -152,15 +152,11 @@ risk-prediction-churn/
 ├── app/                      # API and UI
 │   ├── api.py               # FastAPI backend
 │   ├── ui.py                # Streamlit dashboard
-│   └── requirements.txt     # App dependencies
 │
 ├── data/
 │   └── churn.csv            # IBM Telco dataset
 │
 ├── models/                   # Saved model artifacts
-│   ├── churn_model.pkl      # Logistic Regression model
-│   ├── scaler.pkl           # StandardScaler
-│   └── feature_names.pkl    # Feature list
 │
 ├── notebooks/                # Analysis and training
 │   ├── 01_eda.ipynb         # Exploratory analysis
@@ -168,13 +164,8 @@ risk-prediction-churn/
 │   └── 03_modeling.ipynb    # Model training
 │
 ├── documents/                # Documentation
-│   ├── INSIGHTS.md
-│   ├── BUSINESS_RECOMMENDATIONS.md
-│   ├── PREPROCESSING_NOTES.md
-│   └── MODELING_NOTES.md
 │
 ├── requirements.txt          # Main dependencies
-└── README.md                # This file
 ```
 
 ---
