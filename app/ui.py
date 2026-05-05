@@ -62,6 +62,51 @@ def predict_churn(data):
     prob = model.predict_proba(df_scaled)[0][1]
     return prob
 
+def explain_churn(data, prob):
+    reasons = []
+
+    # High risk factors (increase churn)
+    if data['Contract'] == 'Month-to-month':
+        reasons.append("Month-to-month contract (highest risk)")
+    if data['PaymentMethod'] == 'Electronic check':
+        reasons.append("Electronic check payment (45% churn rate)")
+    if data['tenure'] < 6:
+        reasons.append("New customer (<6 months tenure)")
+    elif data['tenure'] < 12:
+        reasons.append("Early tenure stage (6-12 months)")
+    if data['MonthlyCharges'] > 70:
+        reasons.append(f"High monthly charges (${data['MonthlyCharges']:.0f})")
+    if data['InternetService'] == 'Fiber optic':
+        reasons.append("Fiber optic internet (higher churn than DSL)")
+    if data['OnlineSecurity'] == 'No' and data['InternetService'] != 'No':
+        reasons.append("No online security add-on")
+    if data['TechSupport'] == 'No' and data['InternetService'] != 'No':
+        reasons.append("No tech support add-on")
+
+    # Protective factors (reduce churn)
+    protective = []
+    if data['Contract'] in ['One year', 'Two year']:
+        protective.append(f"{data['Contract']} contract (loyalty)")
+    if data['tenure'] >= 24:
+        protective.append(f"Long tenure ({data['tenure']} months - loyal customer)")
+    if data['PaymentMethod'] in ['Bank transfer (automatic)', 'Credit card (automatic)']:
+        protective.append("Auto-pay enabled (75% lower churn)")
+    if data['TechSupport'] == 'Yes':
+        protective.append("Has tech support")
+    if data['OnlineSecurity'] == 'Yes':
+        protective.append("Has online security")
+
+    # Return top 3 based on risk level
+    if prob >= 0.7:
+        # High risk - show risk factors
+        return reasons[:3] if reasons else ["Multiple risk factors present"]
+    elif prob >= 0.4:
+        # Medium risk - mix of risks and protective
+        return (reasons[:2] + protective[:1]) if reasons else protective[:3]
+    else:
+        # Low risk - show protective factors
+        return protective[:3] if protective else ["No significant risk factors"]
+
 # Page config
 st.set_page_config(
     page_title="Churn Predictor",
@@ -483,52 +528,24 @@ with tab1:
             if monthly > 70:
                 st.markdown("- High monthly charges")
 
-            # Top reasons - contextual to the prediction
-            try:
-                reasons = []
-
-                if risk == "HIGH" or risk == "MEDIUM":
-                    # Show risk factors
-                    if contract == "Month-to-month":
-                        reasons.append("Month-to-month contract (high churn risk)")
-                    if tenure < 6:
-                        reasons.append(f"New customer ({tenure} months - critical period)")
-                    if payment == "Electronic check":
-                        reasons.append("Electronic check payment (45% churn rate)")
-                    if monthly > 70:
-                        reasons.append(f"High monthly bill (${monthly})")
-                    if internet == "Fiber optic":
-                        reasons.append("Fiber optic internet (higher churn)")
-                    if security == "No" and internet != "No":
-                        reasons.append("No online security")
-                    if tech == "No" and internet != "No":
-                        reasons.append("No tech support")
-                else:
-                    # LOW risk - show protective factors
-                    if contract == "Two year":
-                        reasons.append("Two-year contract (most stable)")
-                    elif contract == "One year":
-                        reasons.append("One-year contract (stable)")
-                    if tenure > 24:
-                        reasons.append(f"Loyal customer ({tenure} months)")
-                    if payment in ["Bank transfer (automatic)", "Credit card (automatic)"]:
-                        reasons.append("Auto-pay enrolled (lower churn)")
-                    if monthly < 50:
-                        reasons.append(f"Affordable monthly bill (${monthly})")
-                    if internet == "DSL":
-                        reasons.append("DSL internet (more stable)")
-                    if security == "Yes":
-                        reasons.append("Online security enabled")
-                    if tech == "Yes":
-                        reasons.append("Tech support enabled")
-
-                # Show top 3-4 reasons
-                if reasons:
-                    st.markdown("**Top Reasons for This Prediction**")
-                    for reason in reasons[:4]:
-                        st.markdown(f"- {reason}")
-            except:
-                pass
+            # Get model-based explanations
+            if LOCAL_MODE:
+                reasons = explain_churn(data, prob)
+                st.markdown("**Top Reasons for This Prediction**")
+                for reason in reasons:
+                    st.markdown(f"- {reason}")
+            else:
+                try:
+                    explain_resp = requests.post("http://localhost:8000/explain", json=data, timeout=5)
+                    if explain_resp.status_code == 200:
+                        explanation = explain_resp.json()
+                        st.markdown("**Top Reasons for This Prediction**")
+                        for reason in explanation.get('top_reasons', []):
+                            st.markdown(f"- {reason}")
+                    else:
+                        st.warning(f"Explain endpoint error: {explain_resp.status_code}")
+                except Exception as e:
+                    st.warning(f"Explain unavailable: {e}")
 
 # ============================================
 # TAB 2: MODEL INFO

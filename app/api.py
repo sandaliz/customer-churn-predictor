@@ -13,22 +13,17 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# Load model and preprocessors at startup
-model_path = "../models/churn_model.pkl"
-scaler_path = "../models/scaler.pkl"
-features_path = "../models/feature_names.pkl"
+# Load sklearn Pipeline at startup
+pipeline_path = "../models/churn_pipeline.pkl"
 
-# Check if files exist
-if not os.path.exists(model_path):
-    raise Exception(f"Model not found at {model_path}. Run modeling notebook first.")
+if not os.path.exists(pipeline_path):
+    raise Exception(f"Pipeline not found at {pipeline_path}. Run modeling notebook first.")
 
-model = joblib.load(model_path)
-scaler = joblib.load(scaler_path)
-feature_names = joblib.load(features_path)
+pipeline = joblib.load(pipeline_path)
 
-print("Model loaded successfully")
-print(f"Features: {len(feature_names)}")
-print(f"Model type: {type(model).__name__}")
+print("Pipeline loaded successfully")
+print(f"Pipeline steps: {pipeline.named_steps.keys()}")
+print(f"Model type: {type(pipeline.named_steps['classifier']).__name__}")
 
 # Define request body structure
 class CustomerData(BaseModel):
@@ -80,18 +75,11 @@ def health():
 @app.post("/predict", response_model=PredictionResponse)
 def predict(customer: CustomerData):
     try:
-        # Convert input to DataFrame
-        input_data = customer.dict()
-        df_input = pd.DataFrame([input_data])
+        # Convert input to DataFrame - pipeline handles preprocessing
+        df_input = pd.DataFrame([customer.dict()])
         
-        # Apply same preprocessing as training
-        df_processed = preprocess_input(df_input)
-        
-        # Scale features
-        df_scaled = scaler.transform(df_processed)
-        
-        # Make prediction
-        probability = model.predict_proba(df_scaled)[0][1]
+        # Make prediction using pipeline (handles preprocessing internally)
+        probability = pipeline.predict_proba(df_input)[0][1]
         prediction = 1 if probability >= 0.5 else 0
         
         # Determine risk level
@@ -120,21 +108,16 @@ def predict(customer: CustomerData):
 def explain(customer: CustomerData):
     """Returns top 3 reasons for churn prediction"""
     try:
-        input_data = customer.dict()
-        df_input = pd.DataFrame([input_data])
-        df_processed = preprocess_input(df_input)
-        df_scaled = scaler.transform(df_processed)
+        df_input = pd.DataFrame([customer.dict()])
 
-        probability = model.predict_proba(df_scaled)[0][1]
+        probability = pipeline.predict_proba(df_input)[0][1]
 
-        # Get feature contributions (works for both Logistic Regression and Random Forest)
-        if hasattr(model, 'feature_importances_'):
-            # Random Forest
-            importances = model.feature_importances_
-        else:
-            # Logistic Regression
-            importances = model.coef_[0]
+        # Get coefficients from Logistic Regression in pipeline
+        model_step = pipeline.named_steps['classifier']
+        importances = model_step.coef_[0]
 
+        # Get feature names from pipeline's preprocessor
+        feature_names = pipeline.named_steps['preprocessor'].get_feature_names_out()
         feature_imp = dict(zip(feature_names, importances))
 
         # Sort by absolute impact
@@ -152,59 +135,6 @@ def explain(customer: CustomerData):
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-
-def preprocess_input(df: pd.DataFrame) -> pd.DataFrame:
-    """Apply same preprocessing as training"""
-
-    categorical_cols = ['gender', 'Partner', 'Dependents', 'PhoneService',
-                        'MultipleLines', 'InternetService', 'OnlineSecurity',
-                        'OnlineBackup', 'DeviceProtection', 'TechSupport',
-                        'StreamingTV', 'StreamingMovies', 'Contract',
-                        'PaperlessBilling', 'PaymentMethod']
-
-    # Define all categories from training data (first category is baseline for drop_first)
-    category_mapping = {
-        'gender': ['Female', 'Male'],
-        'Partner': ['No', 'Yes'],
-        'Dependents': ['No', 'Yes'],
-        'PhoneService': ['No', 'Yes'],
-        'MultipleLines': ['No', 'No phone service', 'Yes'],
-        'InternetService': ['DSL', 'Fiber optic', 'No'],
-        'OnlineSecurity': ['No', 'No internet service', 'Yes'],
-        'OnlineBackup': ['No', 'No internet service', 'Yes'],
-        'DeviceProtection': ['No', 'No internet service', 'Yes'],
-        'TechSupport': ['No', 'No internet service', 'Yes'],
-        'StreamingTV': ['No', 'No internet service', 'Yes'],
-        'StreamingMovies': ['No', 'No internet service', 'Yes'],
-        'Contract': ['Month-to-month', 'One year', 'Two year'],
-        'PaperlessBilling': ['No', 'Yes'],
-        'PaymentMethod': ['Bank transfer (automatic)', 'Credit card (automatic)', 'Electronic check', 'Mailed check']
-    }
-
-    # Build encoded dataframe manually to ensure all categories are represented
-    df_encoded = df.copy()
-
-    for col in categorical_cols:
-        categories = category_mapping[col]
-        baseline = categories[0]
-
-        # Create dummy columns for all categories except baseline (drop_first=True behavior)
-        for cat in categories[1:]:
-            dummy_col = f"{col}_{cat}"
-            df_encoded[dummy_col] = (df[col] == cat).astype(int)
-
-        # Drop original categorical column
-        df_encoded = df_encoded.drop(columns=[col])
-
-    # Add missing columns (if any)
-    for col in feature_names:
-        if col not in df_encoded.columns:
-            df_encoded[col] = 0
-
-    # Ensure correct column order
-    df_encoded = df_encoded[feature_names]
-
-    return df_encoded
 
 # Run with: uvicorn app.api:app --reload
 if __name__ == "__main__":
