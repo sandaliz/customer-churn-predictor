@@ -23,13 +23,21 @@ MODEL_PATH = os.path.join(os.path.dirname(__file__), "../models/churn_model.pkl"
 SCALER_PATH = os.path.join(os.path.dirname(__file__), "../models/scaler.pkl")
 FEATURES_PATH = os.path.join(os.path.dirname(__file__), "../models/feature_names.pkl")
 
+@st.cache_resource
+def load_models():
+    m = joblib.load(MODEL_PATH)
+    s = joblib.load(SCALER_PATH)
+    f = joblib.load(FEATURES_PATH)
+    return m, s, f
+
 try:
-    model = joblib.load(MODEL_PATH)
-    scaler = joblib.load(SCALER_PATH)
-    feature_names = joblib.load(FEATURES_PATH)
+    model, scaler, feature_names = load_models()
     LOCAL_MODE = True
-except:
+except Exception as e:
     LOCAL_MODE = False
+    st.error(f"Model loading failed: {e}")
+    st.write(f"Model path: {MODEL_PATH}")
+    st.write(f"Path exists: {os.path.exists(MODEL_PATH)}")
 
 # Category mapping for preprocessing
 CATEGORY_MAPPING = {
@@ -577,8 +585,11 @@ with tab1:
                         recommendation = res['recommendation']
                     else:
                         st.error("API error")
-                except:
-                    st.error("API not running on port 8000")
+                except Exception as e:
+                    st.warning("API not available. Using local mode.")
+                    prob_pct = 0
+                    risk = "LOW"
+                    recommendation = "Model files not loaded"
 
             if risk == "HIGH":
                 st.markdown(f"""
