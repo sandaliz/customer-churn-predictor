@@ -71,13 +71,13 @@ streamlit run ui.py --server.port 8502
 
 ## Model Performance
 
-After comparing 3 models, Logistic Regression was selected as the winner.
+**Primary Metric: Recall (57.5%)** - Catching churners is more important than accuracy.
 
-| Model | Accuracy | Precision | Recall | F1-Score |
-|-------|----------|-----------|--------|----------|
-| Logistic Regression | 80.4% | 64.8% | 57.5% | 60.9% |
-| Random Forest | 78.8% | 62.3% | 50.8% | 56.0% |
-| Decision Tree | 71.6% | 46.6% | 46.0% | 46.3% |
+| Model | Recall | Precision | Accuracy | F1-Score |
+|-------|--------|-----------|----------|----------|
+| Logistic Regression | 57.5% | 64.8% | 80.4% | 60.9% |
+| Random Forest | 50.8% | 62.3% | 78.8% | 56.0% |
+| Decision Tree | 46.0% | 46.6% | 71.6% | 46.3% |
 
 **Confusion Matrix (Logistic Regression)**
 ```
@@ -86,6 +86,19 @@ After comparing 3 models, Logistic Regression was selected as the winner.
 Actual  No   1034     113
         Yes    84     176
 ```
+
+**Business Impact:**
+- Catches 176 of 260 actual churners
+- Missed churners cost: ~$74,000 annually
+- Net savings with this model: ~$85,000
+
+---
+
+## Handling Class Imbalance
+
+- Churn rate: 26.6% (imbalanced dataset)
+- Used `class_weight='balanced'` in Logistic Regression
+- Stratified train-test split maintained churn ratio
 
 ---
 
@@ -159,7 +172,7 @@ risk-prediction-churn/
 │   └── churn.csv            # IBM Telco dataset
 │
 ├── models/                   # Saved model artifacts
-│   ├── churn_model.pkl      # Logistic Regression model
+│   ├── churn_model.pkl      # Random Forest model
 │   ├── scaler.pkl           # StandardScaler
 │   └── feature_names.pkl    # Feature list
 │
@@ -191,6 +204,23 @@ risk-prediction-churn/
 | Evaluation | Precision, Recall, F1, Confusion Matrix |
 | Deployment | REST API and Interactive dashboard |
 | Business Translation | Risk scores to Retention actions |
+
+---
+
+## Limitations
+
+| Limitation | Impact | Mitigation |
+|------------|--------|------------|
+| Historical data only | Past patterns may not predict future | Monthly retraining recommended |
+| Correlation not causation | Discounts may not cause retention | A/B test recommendations |
+| No competitor data | Price sensitivity may be underestimated | Monitor market changes |
+| No service quality metrics | Outages/issues not captured | Add sentiment analysis |
+| Fixed pricing model | Dynamic pricing not considered | Continuous model updates |
+
+**Caveats:**
+- Model predicts probability, not certainty
+- Recommendations assume rational customer behavior
+- External factors (economy, competitors) not included
 
 ---
 

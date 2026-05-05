@@ -483,6 +483,53 @@ with tab1:
             if monthly > 70:
                 st.markdown("- High monthly charges")
 
+            # Top reasons - contextual to the prediction
+            try:
+                reasons = []
+
+                if risk == "HIGH" or risk == "MEDIUM":
+                    # Show risk factors
+                    if contract == "Month-to-month":
+                        reasons.append("Month-to-month contract (high churn risk)")
+                    if tenure < 6:
+                        reasons.append(f"New customer ({tenure} months - critical period)")
+                    if payment == "Electronic check":
+                        reasons.append("Electronic check payment (45% churn rate)")
+                    if monthly > 70:
+                        reasons.append(f"High monthly bill (${monthly})")
+                    if internet == "Fiber optic":
+                        reasons.append("Fiber optic internet (higher churn)")
+                    if security == "No" and internet != "No":
+                        reasons.append("No online security")
+                    if tech == "No" and internet != "No":
+                        reasons.append("No tech support")
+                else:
+                    # LOW risk - show protective factors
+                    if contract == "Two year":
+                        reasons.append("Two-year contract (most stable)")
+                    elif contract == "One year":
+                        reasons.append("One-year contract (stable)")
+                    if tenure > 24:
+                        reasons.append(f"Loyal customer ({tenure} months)")
+                    if payment in ["Bank transfer (automatic)", "Credit card (automatic)"]:
+                        reasons.append("Auto-pay enrolled (lower churn)")
+                    if monthly < 50:
+                        reasons.append(f"Affordable monthly bill (${monthly})")
+                    if internet == "DSL":
+                        reasons.append("DSL internet (more stable)")
+                    if security == "Yes":
+                        reasons.append("Online security enabled")
+                    if tech == "Yes":
+                        reasons.append("Tech support enabled")
+
+                # Show top 3-4 reasons
+                if reasons:
+                    st.markdown("**Top Reasons for This Prediction**")
+                    for reason in reasons[:4]:
+                        st.markdown(f"- {reason}")
+            except:
+                pass
+
 # ============================================
 # TAB 2: MODEL INFO
 # ============================================
@@ -509,9 +556,9 @@ with tab2:
     with m3:
         st.markdown('''
         <div class="metric-card" style="background-color: #dcfce7; border: 2px solid #bbf7d0;">
-            <div class="metric-label">Model Accuracy</div>
-            <div class="metric-value" style="color: #000000;">80.4%</div>
-            <div class="metric-change" style="color: #059669;">▲ 2.3%</div>
+            <div class="metric-label">Model Recall</div>
+            <div class="metric-value" style="color: #000000;">57.5%</div>
+            <div class="metric-change" style="color: #059669;">Catches churners</div>
         </div>
         ''', unsafe_allow_html=True)
     with m4:

@@ -20,6 +20,8 @@
 
 ### Winner: Logistic Regression (F1-Score: 0.609)
 
+*Note: Random Forest (78.8% accuracy) was deployed for production use.*
+
 ---
 
 ## Understanding the Metrics
@@ -74,9 +76,9 @@ Nothing else comes close.
 
 ## Saved
 models/
-├── churn_model.pkl ← Best model (Logistic Regression)
-├── scaler.pkl ← For scaling new data
-└── feature_names.pkl ← Column order for API
+├── churn_model.pkl <- Random Forest (deployed)
+├── scaler.pkl <- For scaling new data
+└── feature_names.pkl <- Column order for API
 
 
 ---

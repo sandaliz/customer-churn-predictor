@@ -115,6 +115,44 @@ def predict(customer: CustomerData):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+# Explainability endpoint
+@app.post("/explain")
+def explain(customer: CustomerData):
+    """Returns top 3 reasons for churn prediction"""
+    try:
+        input_data = customer.dict()
+        df_input = pd.DataFrame([input_data])
+        df_processed = preprocess_input(df_input)
+        df_scaled = scaler.transform(df_processed)
+
+        probability = model.predict_proba(df_scaled)[0][1]
+
+        # Get feature contributions (works for both Logistic Regression and Random Forest)
+        if hasattr(model, 'feature_importances_'):
+            # Random Forest
+            importances = model.feature_importances_
+        else:
+            # Logistic Regression
+            importances = model.coef_[0]
+
+        feature_imp = dict(zip(feature_names, importances))
+
+        # Sort by absolute impact
+        sorted_imp = sorted(feature_imp.items(), key=lambda x: abs(x[1]), reverse=True)[:3]
+
+        reasons = []
+        mean_importance = sum(importances) / len(importances)
+        for feat, imp in sorted_imp:
+            if imp > mean_importance:
+                reasons.append(f"{feat}: increases churn risk")
+            else:
+                reasons.append(f"{feat}: reduces churn risk")
+
+        return {"churn_probability": probability, "top_reasons": reasons}
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 def preprocess_input(df: pd.DataFrame) -> pd.DataFrame:
     """Apply same preprocessing as training"""
 
